@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Đăng ký tài khoản</title>
+  <style>
+    body { background: #f5ecff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    input, button { margin-top: 10px; width: 100%; padding: 10px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Đăng ký tài khoản</h2>
+    <form id="registerForm">
+      <input type="text" name="username" placeholder="Tên tài khoản" required>
+      <input type="password" name="password" placeholder="Mật khẩu" required>
+      <button type="submit">Đăng ký</button>
+    </form>
+    <p>Đã có tài khoản? <a href="login.html">Đăng nhập</a></p>
+  </div>
+
+ <script>
+document.getElementById('registerForm')?.addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = {
+    username: form.username.value,
+    password: form.password.value
+  };
+
+  const res = await fetch('/api/auth/register-public', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+
+  if (res.ok) {
+    alert('Đăng ký thành công! Mời bạn đăng nhập');
+    window.location.href = 'login.html';
+  } else {
+    const err = await res.json();
+    alert('Lỗi: ' + err.error);
+  }
+});
+</script>
+
+</body>
+</html>

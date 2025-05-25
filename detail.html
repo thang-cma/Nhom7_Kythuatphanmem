@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết người nổi tiếng</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-purple-50 to-white min-h-screen text-gray-800">
+  <div class="container mx-auto px-4 py-12">
+    <a href="index.html" class="text-purple-700 font-semibold hover:underline">&larr; Quay lại Trang Chủ</a>
+
+    <div id="detail-container" class="mt-8 bg-white rounded-lg shadow-lg p-6 flex flex-col md:flex-row gap-6">
+      <img id="detail-image" src="" alt="" class="w-full md:w-1/3 rounded object-cover">
+      <div class="flex-1">
+        <h1 id="detail-name" class="text-3xl font-bold text-purple-800 mb-2"></h1>
+        <p id="detail-profession" class="text-lg font-medium text-gray-600 mb-4"></p>
+        <p id="detail-description" class="text-gray-700 leading-relaxed"></p>
+      </div>
+    </div>
+  </div>
+
+<script>
+  async function loadDetail() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (!id) return document.body.innerHTML = '<p class="text-center mt-12 text-red-500">Thiếu ID người nổi tiếng.</p>';
+
+    try {
+      const res = await fetch('http://localhost:3000/api/celebs');
+      const celebs = await res.json();
+      const celeb = celebs.find(c => c._id === id);
+
+      if (!celeb) return document.body.innerHTML = '<p class="text-center mt-12 text-red-500">Không tìm thấy người nổi tiếng.</p>';
+
+      document.getElementById('detail-name').textContent = celeb.name;
+      document.getElementById('detail-image').src = celeb.image;
+      document.getElementById('detail-image').alt = celeb.name;
+      document.getElementById('detail-profession').textContent = celeb.profession;
+      document.getElementById('detail-description').textContent = celeb.description;
+
+      // Yêu thích
+      const favs = JSON.parse(localStorage.getItem('favorites') || '[]');
+      const isFav = favs.includes(celeb._id);
+      const favBtn = document.createElement('button');
+      favBtn.innerHTML = isFav ? '❤️ Đã yêu thích' : '🤍 Thêm vào yêu thích';
+      favBtn.className = 'mt-6 px-4 py-2 rounded bg-pink-500 text-white hover:bg-pink-600';
+      favBtn.onclick = () => {
+        const index = favs.indexOf(celeb._id);
+        if (index > -1) {
+          favs.splice(index, 1);
+          favBtn.innerHTML = '🤍 Thêm vào yêu thích';
+        } else {
+          favs.push(celeb._id);
+          favBtn.innerHTML = '❤️ Đã yêu thích';
+        }
+        localStorage.setItem('favorites', JSON.stringify(favs));
+      };
+      document.querySelector('.flex-1').appendChild(favBtn);
+
+      // ✅ Thêm nút sửa nếu đã đăng nhập
+      if (localStorage.getItem('token')) {
+        const editBtn = document.createElement('a');
+        editBtn.href = `edit.html?id=${id}`;
+        editBtn.textContent = '✏️ Sửa thông tin';
+        editBtn.className = 'inline-block mt-4 ml-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700';
+
+        document.querySelector('.flex-1').appendChild(editBtn);
+      }
+    } catch (error) {
+      document.body.innerHTML = '<p class="text-center mt-12 text-red-500">Lỗi khi tải dữ liệu.</p>';
+    }
+  }
+
+  loadDetail();
+</script>
+
+
+</body>
+</html>
