@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chi tiết người nổi tiếng</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-purple-50 to-white min-h-screen text-gray-800">
+  <div class="container mx-auto px-4 py-12">
+    <a href="index.html" class="text-purple-700 font-semibold hover:underline">&larr; Quay lại Trang Chủ</a>
+
+    <div id="celeb-detail" class="mt-8"></div>
+  </div>
+
+  <script>
+    const celebId = new URLSearchParams(window.location.search).get('id');
+    console.log('celebId:', celebId); // ✅ kiểm tra xem có đủ không
+
+    async function loadDetail() {
+      const detailContainer = document.getElementById('celeb-detail');
+      const res = await fetch(`http://localhost:3000/api/celebs`);
+      const celebs = await res.json();
+      const celeb = celebs.find(c => c._id === celebId);
+
+      if (!celeb) {
+        detailContainer.innerHTML = '<p class="text-red-500">Không tìm thấy người nổi tiếng.</p>';
+        return;
+      }
+
+      detailContainer.innerHTML = `
+        <div class="flex flex-col md:flex-row gap-8 bg-white p-6 rounded-lg shadow-lg">
+          <img src="${celeb.image}" class="w-full md:w-1/3 rounded object-cover" alt="${celeb.name}">
+          <div class="flex-1">
+            <h1 class="text-3xl font-bold text-purple-800 mb-2">${celeb.name}</h1>
+            <p class="text-lg font-medium text-gray-600 mb-4">${celeb.profession}</p>
+            <p class="text-gray-700 leading-relaxed">${celeb.description}</p>
+            <div id="fav-btn-container" class="mt-6"></div>
+            <div id="edit-btn-container" class="mt-4"></div>
+          </div>
+        </div>
+      `;
+
+      // ✅ Kiểm tra trạng thái yêu thích
+      let isFav = false;
+      try {
+        const token = localStorage.getItem('token');
+        const favRes = await fetch('http://localhost:3000/api/users/favorites', {
+          headers: {
+            Authorization: 'Bearer ' + token
+          }
+        });
+        const favs = await favRes.json();
+        isFav = favs.some(c => c._id === celebId);
+      } catch (err) {
+        console.warn('Không kiểm tra được trạng thái yêu thích:', err);
+      }
+
+      // ✅ Nút yêu thích
+      const favBtn = document.createElement('button');
+      favBtn.innerHTML = isFav ? '❤️ Đã yêu thích' : '🤍 Thêm vào yêu thích';
+      favBtn.className = 'px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600';
+
+      favBtn.onclick = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return alert('Bạn cần đăng nhập trước');
+
+        const res = await fetch(`http://localhost:3000/api/users/favorites/${encodeURIComponent(celebId)}`, {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + token
+          }
+        });
+
+        if (res.ok) {
+          isFav = !isFav;
+          favBtn.innerHTML = isFav ? '❤️ Đã yêu thích' : '🤍 Thêm vào yêu thích';
+        } else {
+          alert('Không thể cập nhật yêu thích');
+        }
+      };
+
+      document.getElementById('fav-btn-container').appendChild(favBtn);
+
+      // ✅ Nút sửa thông tin nếu đã login
+      if (localStorage.getItem('token')) {
+        const editBtn = document.createElement('a');
+        editBtn.href = `edit.html?id=${celebId}`;
+        editBtn.textContent = '✏️ Sửa thông tin';
+        editBtn.className = 'inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ml-4';
+        document.getElementById('edit-btn-container').appendChild(editBtn);
+      }
+    }
+
+    loadDetail();
+  </script>
+</body>
+</html>

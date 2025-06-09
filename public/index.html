@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trang chủ HQKT</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-purple-100 to-white min-h-screen font-sans">
+
+  <!-- Header -->
+  <header class="bg-white shadow-md sticky top-0 z-50">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <a href="index.html" class="text-3xl font-bold text-purple-700">HQKT</a>
+      <div class="flex items-center gap-6">
+        <ul class="flex gap-6 text-purple-800 font-medium text-lg">
+          <li><a href="index.html?profession=ca sĩ" class="hover:text-purple-600">Ca sĩ</a></li>
+          <li><a href="index.html?profession=diễn viên" class="hover:text-purple-600">Diễn viên</a></li>
+          <li><a href="index.html?profession=cầu thủ" class="hover:text-purple-600">Cầu thủ</a></li>
+          <li>
+            <a href="favorites.html" class="flex items-center gap-2 text-pink-600 font-semibold hover:text-pink-500">
+              ❤️ <span>Yêu thích</span>
+            </a>
+          </li>
+        </ul>
+        <form action="#" method="GET" class="relative">
+          <input
+            type="text"
+            id="search-input"
+            name="search"
+            placeholder="Tìm kiếm nghệ sĩ..."
+            class="px-4 py-2 border border-purple-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          <button
+            type="submit"
+            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-purple-700 hover:text-purple-900"
+          >
+            🔍
+          </button>
+        </form>
+        <div class="flex items-center gap-4" id="admin-bar" style="display: none;">
+          <span id="welcome-msg" class="text-purple-700 font-semibold"></span>
+          <button onclick="logout()" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Đăng xuất</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Giới thiệu -->
+  <section class="text-center py-10">
+    <h2 class="text-4xl font-bold text-purple-800 mb-4">Chào mừng đến với HQKT</h2>
+    <p class="text-lg text-gray-700">
+      Khám phá tiểu sử chi tiết của các ca sĩ, diễn viên và cầu thủ nổi tiếng
+    </p>
+  </section>
+
+  <!-- ✅ Nút Thêm -->
+  <div class="text-center my-4 admin-only hidden" id="admin-add-btn">
+    <button onclick="openAddForm()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+      ➕ Thêm người nổi tiếng
+    </button>
+  </div>
+
+  <!-- Danh sách người nổi tiếng -->
+  <section class="container mx-auto px-4 pb-16">
+    <div id="celebs-container" class="grid md:grid-cols-3 gap-8"></div>
+  </section>
+
+  <!-- ✅ Form popup thêm người nổi tiếng -->
+  <div id="add-celeb-form" style="display: none;" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-white p-4 rounded shadow-lg z-50 border w-96">
+    <h2 class="text-xl font-bold mb-2">Thêm người nổi tiếng</h2>
+    <input type="text" id="celeb-name" placeholder="Tên" class="border p-2 mb-2 w-full" />
+    <input type="text" id="celeb-role" placeholder="Nghề nghiệp (ca sĩ, diễn viên...)" class="border p-2 mb-2 w-full" />
+    <input type="text" id="celeb-description" placeholder="Mô tả (ngày sinh, quốc tịch...)" class="border p-2 mb-2 w-full" />
+    <input type="file" id="celeb-image" class="border p-2 mb-2 w-full" accept="image/*" />
+    <div class="flex justify-end gap-2">
+      <button onclick="submitCeleb()" class="bg-green-500 text-white px-4 py-2 rounded">Lưu</button>
+      <button onclick="closeAddForm()" class="bg-gray-300 px-4 py-2 rounded">Hủy</button>
+    </div>
+  </div>
+
+  <!-- ✅ Script -->
+  <script>
+    const token = localStorage.getItem('token');
+    let isAdmin = false;
+
+    if (!token) {
+      window.location.href = 'login.html';
+    } else {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      isAdmin = (payload.role || '').toLowerCase() === 'admin';
+      window.isAdmin = isAdmin;
+
+      document.getElementById('welcome-msg').textContent = `Xin chào, ${payload.username}`;
+      document.getElementById('admin-bar').style.display = 'flex';
+
+      if (isAdmin) {
+        document.querySelectorAll('.admin-only').forEach(el => {
+          el.classList.remove('hidden');
+          el.style.display = '';
+        });
+      } else {
+        document.querySelectorAll('.admin-only').forEach(el => el.remove());
+      }
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const professionFilter = params.get('profession') || '';
+    loadCelebs('', professionFilter);
+
+    document.querySelector('form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const keyword = document.getElementById('search-input').value.trim();
+      loadCelebs(keyword, professionFilter);
+    });
+
+    async function loadCelebs(keyword = '', profession = '') {
+      const res = await fetch('/api/celebs');
+      let celebs = await res.json();
+
+      if (keyword) {
+        celebs = celebs.filter(c =>
+          c.name.toLowerCase().includes(keyword.toLowerCase())
+        );
+      }
+
+      if (profession) {
+        celebs = celebs.filter(c =>
+          (c.profession || '').toLowerCase() === profession.toLowerCase()
+        );
+      }
+
+      const container = document.getElementById('celebs-container');
+      container.innerHTML = celebs
+        .map(
+          c => `
+          <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition relative">
+            <a href="detail.html?id=${c._id}">
+              <img src="${c.image || 'https://via.placeholder.com/400x300?text=No+Image'}" class="w-full h-64 object-cover" />
+              <div class="p-4">
+                <h3 class="text-xl font-semibold text-purple-700">${c.name || 'Không rõ'}</h3>
+                <p class="text-sm text-gray-600">${c.profession || 'Không rõ'}</p>
+                <p class="text-sm text-gray-500">${c.description || ''}</p>
+              </div>
+            </a>
+            ${
+              isAdmin
+                ? `<button onclick="deleteCeleb('${c._id}')" class="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded">🗑</button>`
+                : ''
+            }
+          </div>`
+        )
+        .join('');
+    }
+
+    async function deleteCeleb(id) {
+      if (!confirm('Bạn có chắc chắn muốn xoá?')) return;
+      const res = await fetch(`/api/celebs/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (res.ok) {
+        alert('Đã xoá!');
+        location.reload();
+      } else {
+        alert('Xoá thất bại!');
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      window.location.href = 'login.html';
+    }
+
+    function openAddForm() {
+      document.getElementById('add-celeb-form').style.display = 'block';
+    }
+
+    function closeAddForm() {
+      document.getElementById('add-celeb-form').style.display = 'none';
+    }
+
+    async function submitCeleb() {
+      const name = document.getElementById('celeb-name').value;
+      const role = document.getElementById('celeb-role').value;
+      const description = document.getElementById('celeb-description').value;
+      const imageFile = document.getElementById('celeb-image').files[0];
+      const token = localStorage.getItem('token');
+
+      if (!name || !role || !imageFile) {
+        alert('Vui lòng điền đầy đủ thông tin và chọn ảnh.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('profession', role);
+      formData.append('description', description);
+      formData.append('image', imageFile);
+
+      try {
+        const response = await fetch('http://localhost:3000/api/celebs', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + token },
+          body: formData
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+          alert('Thêm thành công!');
+          closeAddForm();
+          location.reload();
+        } else {
+          alert(result.message || 'Thêm thất bại!');
+        }
+      } catch (err) {
+        alert('Lỗi khi gửi dữ liệu!');
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
